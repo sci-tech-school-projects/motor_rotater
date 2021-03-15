@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import sys
+import os, sys, glob, re, shutil, time
 
 index = int(sys.argv[1])
 print('index {}'.format(index))
@@ -47,8 +47,8 @@ def _sort_cnt(img, contours):
     sorted_cnt = []
     h, w, c = np.shape(img)
     for i in range(len(contours)):
-        is_too_large = cv2.contourArea(contours[i]) > w * h / 2
-        is_too_small = cv2.contourArea(contours[i]) < 10
+        is_too_large = cv2.contourArea(contours[i]) > (w * h) // 3 * 2
+        is_too_small = cv2.contourArea(contours[i]) < 0
         if is_too_large or is_too_small:
             continue
         sorted_cnt.append(contours[i])
@@ -56,7 +56,7 @@ def _sort_cnt(img, contours):
 
 
 def __ammend_coordinates(sorted_cnt):
-    trim_size = 5
+    trim_size = 20
     x, y, w, h = sorted_cnt
 
     x = x - trim_size
@@ -68,17 +68,20 @@ def __ammend_coordinates(sorted_cnt):
 
 
 def _fusion_cnt(contours):
-    XYWH = [[], [], [], []]
-    for i in range(len(contours)):
-        x, y, w, h = cv2.boundingRect(contours[i])
-        xywh = [x, y, w, h]
-        for j in range(len(XYWH)):
-            XYWH[j].append(xywh[j])
+    xyXYs = [[], [], [], []]
+    trim_size = 20
+    for idx, contour in enumerate(contours):
+        x, y, X, Y = cv2.boundingRect(contours[idx])
+        X = x + X
+        Y = y + Y
+        xyXY = [x - trim_size, y - trim_size, X + trim_size, Y + trim_size]
+        for j in range(len(xyXYs)):
+            xyXYs[j].append(xyXY[j])
 
-    sorted_cnt = [min(XYWH[0]), min(XYWH[1]), max(XYWH[2]), max(XYWH[3])]
-    x, y, w, h = __ammend_coordinates(sorted_cnt)
+    x, y, X, Y = [min(xyXYs[0]), min(xyXYs[1]), max(xyXYs[2]), max(xyXYs[3])]
+    # x, y, w, h = __ammend_coordinates([x, y, w, h])
 
-    return x, y, w, h
+    return x, y, X, Y
 
 
 def concat_imgs(gray, thresh, img):
@@ -98,24 +101,42 @@ def find_contour(img):
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     sorted_cnt = _sort_cnt(img, contours)
-    x, y, w, h = _fusion_cnt(sorted_cnt)
-    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 3)
+    x, y, X, Y = _fusion_cnt(sorted_cnt)
+    cv2.rectangle(img, (x, y), (X, Y), (0, 0, 255), 3)
     img = concat_imgs(gray, thresh, img)
 
-    return img
+    cv2.imshow('img', img)
+    cv2.waitKey(1)
+    # if cv2.waitKey(0)  == ord('q'):
+    #     return  break
 
 
-while True:
-    ret, frame = cap.read()
+def find_contours(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    frame = trim_img(frame)
-    frame = adjust(frame, alpha, beta)
-    frame = find_contour(frame)
+    for i in range(len(contours)):
+        x, y, X, Y = cv2.boundingRect(contours[i])
+        cv2.rectangle(img, (x, y), (X, Y), (0, 0, 255), 3)
+        cv2.imshow('img', img)
+        cv2.waitKey(1)
+        # if cv2.waitKey(0)  == ord('q'):
+        #     break
 
-    cv2.imshow('resized', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
 
+if __name__ == '__main__':
+    # ./imgs/0013*/*
+    pattern = './imgs/000*/*'
+    image_paths = glob.glob(pattern)
+    image_paths.sort(reverse=True)
+    print(pattern)
+    print(len(image_paths))
 
-cap.release()
+    for image_path in image_paths:
+        img = cv2.imread(image_path)
+
+        find_contour(img)
+        # find_contours(img)
+
 cv2.destroyAllWindows()
