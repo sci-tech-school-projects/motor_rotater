@@ -13,6 +13,9 @@ class Mkdir():
             os.mkdir(target_dir)
 
         dirs_to_make = [
+            os.path.join(target_dir, 'images'),
+            os.path.join(target_dir, 'annotations'),
+            os.path.join(target_dir, 'raw_images'),
             os.path.join(target_dir, 'ImageSets'),
             os.path.join(target_dir, 'ImageSets/Layout'),
             os.path.join(target_dir, 'ImageSets/Main'),

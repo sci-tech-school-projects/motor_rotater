@@ -15,6 +15,7 @@ class Detect_Lego_To_Gen_Annotations():
     output_path = os.path.join(abs_path, 'lego/detected')
     image_paths = glob.glob(image_pattern)
     h_w_c = []
+    ex_xyXY = []
 
     def __init__(self):
         print('init ', self.__class__.__name__)
@@ -30,7 +31,6 @@ class Detect_Lego_To_Gen_Annotations():
                 self.Get_image_shape(image_path)
                 if contour == []:
                     print('Detect NOTHING')
-                    # self._generate_xml(new_image_path)
                     sys.exit()
                 else:
                     self.Generate_xml(new_image_path, contour)
@@ -68,7 +68,7 @@ class Detect_Lego_To_Gen_Annotations():
 
         def _fusion_cnt(self, contours):
             xyXYs = [[], [], [], []]
-            trim_size = 5
+            trim_size = 0
             for idx, contour in enumerate(contours):
                 x, y, X, Y = cv2.boundingRect(contours[idx])
                 X = x + X
@@ -76,7 +76,11 @@ class Detect_Lego_To_Gen_Annotations():
                 xyXY = [x - trim_size, y - trim_size, X + trim_size, Y + trim_size]
                 for j in range(len(xyXYs)):
                     xyXYs[j].append(xyXY[j])
-            x, y, X, Y = [min(xyXYs[0]), min(xyXYs[1]), max(xyXYs[2]), max(xyXYs[3])]
+            try:
+                x, y, X, Y = [min(xyXYs[0]), min(xyXYs[1]), max(xyXYs[2]), max(xyXYs[3])]
+                self.ex_xyXY = [x, y, X, Y]
+            except ValueError:
+                x, y, X, Y = self.ex_xyXY
             return x, y, X, Y
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -93,6 +97,8 @@ class Detect_Lego_To_Gen_Annotations():
 
         new_xml_path = os.path.join('./lego/annotations', xml_name)
         if os.path.exists(new_xml_path):
+            if not os.path.exists('./lego/annotations/old'):
+                os.mkdir('./lego/annotations/old')
             shutil.move(new_xml_path, os.path.join('./lego/annotations/old', xml_name))
         shutil.copy(format, new_xml_path)
 
@@ -138,7 +144,7 @@ class Detect_Lego_To_Gen_Annotations():
         """
         xml_name example : 0001__light_green__square__1__2__1_2162.jpg
         """
-        pattern = r"\d{4}__(\w{2,10}_{0,1}\w{0,10})__(.{1,40})__(\d{1,2})__(\d{1,2})__(\d{1,2})_(\d{4}).(\w{3})"
+        pattern = r"\d{4}__(\w{2,10}_{0,1}\w{0,10})__(.{1,40}?)__(\d{1,2})__(\d{1,2})__(\d{1,2})_(\d{4,5}).(\w{3})"
         regex = re.compile(pattern)
         result = regex.search(image_name)
         param = {
