@@ -3,11 +3,14 @@
 ## References
 ### jetson-inference
 [Build](https://github.com/dusty-nv/jetson-inference/blob/master/docs/building-repo-2.md#downloading-models)
+
 [Models](https://github.com/dusty-nv/jetson-inference/blob/master/docs/detectnet-console-2.md)
+
 [Re-training SSD-Mobilenet](https://github.com/dusty-nv/jetson-inference/blob/master/docs/pytorch-ssd.md)
 
 ### Pytorch
 [Single Shot MultiBox Detector Implementation in Pytorch](https://github.com/qfgaohao/pytorch-ssd)
+
 [Forked above: ](https://github.com/dusty-nv/pytorch-ssd)
 
 ## at pi4p:~/motor_rotater
