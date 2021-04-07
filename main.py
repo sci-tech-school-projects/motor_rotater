@@ -5,6 +5,9 @@ from datetime import datetime
 from dc_motor import Dc_motor
 
 
+# from camera_test import Camera_Test
+
+
 class Motor_rotater():
     # cam_indexs = [0, 2, 4]
     cam_indexs = [0, 2, 4]
@@ -50,6 +53,13 @@ class Motor_rotater():
             print("***** Init path {} ".format(self.base_name))
             os.mkdir(self.path)
 
+    def Show_Contour_Image(self, img, contour):
+        x, y, w, h = cv2.boundingRect(contour)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        cv2.imshow('x y w h {} {} {} {}'.format(x, y, w, h), img)
+        if cv2.waitKey(0) % 256 == ord('q'):
+            pass
+
     def Main(self, brightness):
         file_name_counter = 0
         imgs_from_each_cam = 500
@@ -72,14 +82,16 @@ class Motor_rotater():
 
             ret, frame = cap.read()
             if ret:
-                frame = self.trim_img(frame, self.cam_indexs[i])
+                if self.cam_indexs[i] in [2, 4]:
+                    frame = self.trim_img(frame, self.cam_indexs[i])
                 frame = self.adjust(frame, brightness, 0.0)
                 # cv2.imshow('frame', frame)
+                # if cv2.waitKey(1) % 256 == ord('q'):
+                #     pass
                 self.save_img(frame, file_name_counter, self.cam_indexs[i])
                 file_name_counter += 1
                 imgs_total += 1
-                if cv2.waitKey(1) & 0xff == ord("q"):
-                    break
+
             else:
                 break
 
@@ -88,17 +100,12 @@ class Motor_rotater():
         cv2.destroyAllWindows()
 
     def trim_img(self, frame, cam_index):
-        def get_shape(frame):
-            shape = np.shape(frame)
-            h, w, c = shape
-            return h, w, c
-
         def get_trimmed_frame(frame, h, w):
             if cam_index == 0:
-                x = 0 + 150
-                y = 0 + 100
-                X = w - 200
-                Y = h - 150
+                x = 0
+                y = 0
+                X = w
+                Y = h
             elif cam_index == 2:
                 x = 0
                 y = 0
@@ -115,9 +122,9 @@ class Motor_rotater():
             frame = frame[y:Y, x:X]
             return frame
 
-        h, w, c = get_shape(frame)
+        h, w, c = np.shape(frame)
         frame = get_trimmed_frame(frame, h, w)
-        h, w, c = get_shape(frame)
+        h, w, c = np.shape(frame)
 
         trim_rate = 5
         start_x = int(w / trim_rate)

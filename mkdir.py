@@ -4,7 +4,7 @@ import os, sys, math, glob, re, shutil
 class Mkdir():
     def main(self):
         try:
-            target_dir = sys.argv[1]
+            target_dir = os.path.join(os.getcwd(), sys.argv[1])
         except IndexError:
             print('input target directory to init dirs.')
             sys.exit()
@@ -13,9 +13,9 @@ class Mkdir():
             os.mkdir(target_dir)
 
         dirs_to_make = [
-            os.path.join(target_dir, 'images'),
-            os.path.join(target_dir, 'annotations'),
-            os.path.join(target_dir, 'raw_images'),
+            # os.path.join(target_dir, 'images'),
+            # os.path.join(target_dir, 'annotations'),
+            # os.path.join(target_dir, 'raw_images'),
             os.path.join(target_dir, 'ImageSets'),
             os.path.join(target_dir, 'ImageSets/Layout'),
             os.path.join(target_dir, 'ImageSets/Main'),

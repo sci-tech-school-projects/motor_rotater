@@ -3,6 +3,13 @@ import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
 import subprocess
+import logging
+from camera_test import Camera_Test
+
+logger = logging.getLogger('LoggingTest')
+logger.setLevel(20)
+sh = logging.StreamHandler()
+logger.addHandler(sh)
 
 
 class Detect_Lego_To_Gen_Annotations():
@@ -11,30 +18,32 @@ class Detect_Lego_To_Gen_Annotations():
     abs_image_path_in_xml = os.path.join(abs_path_in_xml, 'lego/images')
 
     abs_path = os.path.abspath(os.getcwd())
-    image_pattern = os.path.join(abs_path, 'lego/raw_images/*/*.jpg')
+    image_pattern = os.path.join(abs_path, 'lego/images/*.jpg')
     output_path = os.path.join(abs_path, 'lego/detected')
     image_paths = glob.glob(image_pattern)
     h_w_c = []
     ex_xyXY = []
+    index = None
 
     def __init__(self):
         print('init ', self.__class__.__name__)
-        self.image_paths.sort()
+        self.image_paths.sort(reverse=True)
         print(self.image_pattern)
         print(self.image_paths[0])
 
     def Main(self):
         for i, image_path in enumerate(self.image_paths):
+            self.index = int(image_path[-8])
             contour, detected_image_path = self.Get_contour(image_path)
             new_image_path = os.path.join('./lego/images', os.path.basename(image_path))
             if image_path != '':
                 self.Get_image_shape(image_path)
                 if contour == []:
                     print('Detect NOTHING')
-                    sys.exit()
+                    # sys.exit()
                 else:
                     self.Generate_xml(new_image_path, contour)
-                shutil.copy(image_path, new_image_path)
+                # shutil.copy(image_path, new_image_path)
             else:
                 print("image_path == '': then sys.exit()")
                 sys.exit()
@@ -50,7 +59,20 @@ class Detect_Lego_To_Gen_Annotations():
         detected_image_path = os.path.join(self.output_path, detected_name)
 
         img = cv2.imread(image_path)
-        contour = self.find_contour(img)
+        h, w, c = np.shape(img)
+
+        # contour = self.find_contour(img)
+        CT = Camera_Test()
+        [x, y, w, h], img, gray, thresh = CT.Find_Contour(img, self.index)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        # cv2.imshow('contour h w c : {} {} {} '.format(h,w,c), img)
+        # if cv2.waitKey(0) % 256 == ord('q'):
+        #     pass
+
+        # img = CT._Concat_Imgs(gray, thresh, img)
+        # # cv2.imshow('img', img)
+        # cv2.imshow('x, y, w, h : {} {} {} {}'.format(x, y, w, h), img)
+        contour = [x, y, x + w, y + h]
 
         return contour, detected_image_path
 
@@ -69,7 +91,7 @@ class Detect_Lego_To_Gen_Annotations():
         def _fusion_cnt(self, contours):
             xyXYs = [[], [], [], []]
             trim_size = 0
-            for idx, contour in enumerate(contours):
+            for idx in range(len(contours)):
                 x, y, X, Y = cv2.boundingRect(contours[idx])
                 X = x + X
                 Y = y + Y
@@ -77,18 +99,46 @@ class Detect_Lego_To_Gen_Annotations():
                 for j in range(len(xyXYs)):
                     xyXYs[j].append(xyXY[j])
             try:
-                x, y, X, Y = [min(xyXYs[0]), min(xyXYs[1]), max(xyXYs[2]), max(xyXYs[3])]
-                self.ex_xyXY = [x, y, X, Y]
+                contour = [min(xyXYs[0]), min(xyXYs[1]), max(xyXYs[2]), max(xyXYs[3])]
+                self.ex_xyXY = contour
             except ValueError:
-                x, y, X, Y = self.ex_xyXY
-            return x, y, X, Y
+                contour = self.ex_xyXY
+            return contour
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        sorted_cnt = _sort_cnt(self, img, contours)
-        x, y, X, Y = _fusion_cnt(self, sorted_cnt)
-        return [x, y, X, Y]
+        contour = []
+        if self.index == 0:
+            contour = self._Get_Min_Dist_Contour(img, contours)
+        if self.index in [2, 4]:
+            sorted_cnt = _sort_cnt(self, img, contours)
+            contour = _fusion_cnt(self, sorted_cnt)
+        return contour
+
+    def _Get_Min_Dist_Contour(self, img, contours):
+        h, w, c = np.shape(img)
+        OX, OY = w / 2, h / 2  # center coors of image
+        min_dist = ((OX ** 2) + (OY ** 2)) ** (1 / 2)
+        min_dist_index = None
+        min_dist_area = OX * OY
+
+        logger.log(20, 'OX {} OY {} min_dist {} '.format(OX, OY, min_dist))
+
+        for i in range(len(contours)):
+            x, y, w, h = cv2.boundingRect(contours[i])
+            ox, oy = x + (w / 2), y + (h / 2)
+            dist = (((ox - OX) ** 2) + ((oy - OY) ** 2)) ** (1 / 2)
+            dist_area = w * h
+            if dist < min_dist and dist_area >= 15 * 15 and dist_area <= 50 * 50:
+                min_dist = dist
+                min_dist_index = i
+                min_dist_area = dist_area
+            if i % 20 == 0:
+                logger.log(20, 'dist {}'.format(dist))
+        txt = 'min_dist min_dist_index min_dist_area contour {} {} {} {}'
+        logger.log(20, txt.format(min_dist, min_dist_index, min_dist_area, cv2.boundingRect(contours[min_dist_index])))
+        return contours[min_dist_index]
 
     def Generate_xml(self, new_image_path, contour=None):
         format = './lego/format.xml'

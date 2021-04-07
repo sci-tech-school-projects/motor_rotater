@@ -14,7 +14,7 @@ mkdir = Mkdir()
 mkdir.main()
 
 # lego
-target_path = sys.argv[1]
+target_path = os.path.join(os.getcwd(), sys.argv[1])
 _abs_path = os.path.abspath(os.getcwd())
 abs_path = os.path.join(_abs_path, target_path)
 
@@ -23,7 +23,7 @@ image_paths = glob.glob(glob_pattern)
 image_paths.sort()
 print('len image_paths {}'.format(len(image_paths)))
 
-pattern = r'\d{4}__\w{1,10}[_?\w{1,10}?]{0,4}__(.*)_\d{4}\.jpg'
+pattern = r'\d{4}__(.*?)__(.*)_\d{4}\.jpg'
 regex = re.compile(pattern)
 
 file_type = ['_train.txt', '_train.txt', '_val.txt', '_test.txt']
@@ -40,7 +40,7 @@ base_path_of_Main = os.path.join(abs_path, 'ImageSets/Main')
 Mains = [os.path.join(base_path_of_Main, file) for file in base_files]
 print('len Mains {}'.format(len(Mains)))
 
-label_file = ['labels.txt']
+label_file = ['labels.txt','obj.names']
 Labels = [os.path.join(abs_path, file) for file in label_file]
 
 
@@ -60,6 +60,7 @@ class Create_Torch_Category_Txt():
             self.labels,
         ]
         # print(self.lists)
+        self.labels_in_labels_txt = []
 
     def Main(self):
         def get_Text(result):
@@ -71,7 +72,7 @@ class Create_Torch_Category_Txt():
         self.Init_File()
         for i, path in enumerate(self.image_paths):
             result = regex.search(path)
-            tag = result.group(1)
+            tag = result.group(2)
             text_to_add = get_Text(result)
             self.Write_File(i, tag, text_to_add)
         self.Write_Label_File()
@@ -92,7 +93,7 @@ class Create_Torch_Category_Txt():
 
         if num in [0, 1, 2]:
             for base_path in [base_path_of_Layout, base_path_of_Main]:
-                file  = os.path.join(base_path, 'trainval.txt')
+                file = os.path.join(base_path, 'trainval.txt')
                 self.write_common_file(file, num, text_to_add)
 
             file = os.path.join(base_path_of_Main, tag + '_trainval.txt')
@@ -108,21 +109,51 @@ class Create_Torch_Category_Txt():
             f.write(text_to_add)
 
     def Write_Label_File(self, ):
-        file = self.labels[0]
-        if not os.path.exists(file):
-            with open(file, 'w') as f:
-                f.write('')
-                print('***** init {}'.format(file))
+        def init_file(file):
+            if not os.path.exists(file):
+                with open(file, 'w') as f:
+                    f.write('')
+                    print('***** init {}'.format(file))
+            return file
 
-        for i, txt in enumerate(self.txts):
-            if i % 4 == 0:
-                _label = os.path.basename(txt)
-                # print(_label)
-                if _label != 'test.txt':
-                    label = _label[0:(len(_label) - 9)]
-                    with open(file, 'a') as f:
-                        f.write(label + '\n')
+        def _print(list):
+            for item in list:
+                print(item)
+
+        for file in self.labels:
+            init_file(file)
+            for i, txt in enumerate(self.txts):
+                if i % 4 == 0:
+                    _label = os.path.basename(txt)
+                    # print(_label)
+                    if _label != 'test.txt':
+                        label = _label[0:(len(_label) - 9)]
+                        with open(file, 'a') as f:
+                            f.write(label + '\n')
+
+    def Write_Obj_Data(self):
+        def get_class_num():
+            labels_txt = os.path.join(abs_path,self.labels[0])
+            with open(labels_txt,'r') as l:
+                return  len(l.readlines())
+
+        obj_data = os.path.join(abs_path,'obj.data')
+        classes = get_class_num()
+        txt = 'classes = {}\n\
+        train  = data/train.txt\n\
+        valid  = data/test.txt\n\
+        names = data/obj.names\n\
+        backup = backup/'.format(classes)
+        if os.path.exists(obj_data):
+            os.remove(obj_data)
+
+        with open(obj_data, 'w') as f:
+            print('***** init {}'.format(obj_data))
+            f.write(txt)
+
+
 
 
 CTCT = Create_Torch_Category_Txt(image_paths, file_type, txts, Mains, Layouts, Labels)
 CTCT.Main()
+CTCT.Write_Obj_Data()

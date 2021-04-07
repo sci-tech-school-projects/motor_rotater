@@ -1,6 +1,11 @@
 import os, sys, glob, re, shutil
 
 # python3 rename_dir_and_files.py imgs/0003* imgs/0007__black__plus_axis__2__1__1_
+# python3 rename_dir_and_files.py imgs/0004__blue__friction_snap_w_plus_axis__2__1__1_ imgs/0000__blue__friction_snap_w_plus_axis__2__1__1_
+# python3 rename_dir_and_files.py imgs/0005__blue__connector__3__1__1_ imgs/0001__blue__connector__3__1__1_
+# python3 rename_dir_and_files.py imgs/0006__red__friction_snap_w_cross_hole__3__1__1_ imgs/0002__red__friction_snap_w_cross_hole__3__1__1_
+# python3 rename_dir_and_files.py imgs/0007__orange__beak__3__2__1_ imgs/0003__orange__beak__3__2__1_
+
 dir_name = sys.argv[1]
 new_dir_name = sys.argv[2]
 image_paths = glob.glob(os.path.join(dir_name, '*'))
