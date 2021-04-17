@@ -6,6 +6,7 @@ from datetime import datetime
 from Brickpi3_Motors import Brickpi3_Motors
 import logging
 
+
 logger = logging.getLogger('LoggingTest')
 logger.setLevel(20)
 sh = logging.StreamHandler()
