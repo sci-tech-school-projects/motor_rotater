@@ -2,5 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/BrickPi" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/BrickPi3" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/BrickPi_Python" vcs="Git" />
   </component>
 </project>
