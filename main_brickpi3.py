@@ -6,7 +6,6 @@ from datetime import datetime
 from Brickpi3_Motors import Brickpi3_Motors
 import logging
 
-
 logger = logging.getLogger('LoggingTest')
 logger.setLevel(20)
 sh = logging.StreamHandler()
@@ -64,18 +63,6 @@ class Motor_rotater():
         if cv2.waitKey(0) % 256 == ord('q'):
             pass
 
-    # def Run_Thread(self, cam_index):
-    #     BM = Brickpi3_Motors()
-    #     thread = threading.Thread(target=BM.Main, args=(cam_index,))
-    #     thread.start()
-    #     print('***** Run_Thread cam_index {} starts'.format(cam_index))
-    #     return BM, thread
-    #
-    # def Join_Thread(self, BM, thread, cam_index):
-    #     del BM
-    #     thread.join()
-    #     print('***** Run_Thread cam_index {} joined'.format(cam_index))
-
     def Main(self):
         file_name_counter = 0
         imgs_from_each_cam = 20
@@ -115,12 +102,6 @@ class Motor_rotater():
                 break
 
             if ret and i < len(self.cam_indexs):
-                # if self.cam_indexs[i] in [2, 4]:
-                #     frame = self.trim_img(frame, self.cam_indexs[i])
-                # frame = self.adjust(frame, brightness, 0.0)
-                # cv2.imshow('frame', frame)
-                # if cv2.waitKey(1) % 256 == ord('q'):
-                #     pass
                 self.save_img(frame, file_name_counter, self.cam_indexs[i])
                 file_name_counter += 1
                 imgs_total += 1
@@ -131,52 +112,12 @@ class Motor_rotater():
         cap.release()
         cv2.destroyAllWindows()
 
-    def trim_img(self, frame, cam_index):
-        def get_trimmed_frame(frame, h, w):
-            if cam_index == 0:
-                x = 0
-                y = 0
-                X = w
-                Y = h
-            elif cam_index == 2:
-                x = 0
-                y = 0
-                X = w
-                Y = h
-            elif cam_index == 4:
-                x = 0
-                y = 0
-                X = w
-                Y = h
-            else:
-                print("trim size could not be set error occured. sys.exit()")
-                sys.exit()
-            frame = frame[y:Y, x:X]
-            return frame
-
-        h, w, c = np.shape(frame)
-        frame = get_trimmed_frame(frame, h, w)
-        h, w, c = np.shape(frame)
-
-        trim_rate = 5
-        start_x = int(w / trim_rate)
-        start_y = int(h / trim_rate)
-        end_x = w
-        end_y = h
-        return frame[start_y:end_y, start_x:end_x, ::]
-
     def save_img(self, frame, file_name_counter, cam_index):
         num = '{}{:0=3}'.format(cam_index, file_name_counter)
         _path_file = os.path.join(self.path, self.base_name)
         path_file = _path_file + '_' + num + '.jpg'
         print(path_file)
         cv2.imwrite(path_file, frame)
-
-    def adjust(self, img, alpha=1.0, beta=0.0):
-        # 積和演算を行う。
-        dst = alpha * img + beta
-        # [0, 255] でクリップし、uint8 型にする。
-        return np.clip(dst, 0, 255).astype(np.uint8)
 
 
 if __name__ == '__main__':

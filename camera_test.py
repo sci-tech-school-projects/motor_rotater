@@ -3,7 +3,7 @@ import numpy as np
 import os, sys, math, glob, re, shutil, math
 import logging
 from argparse import ArgumentParser
-from dc_motor import Dc_motor
+from get_contour_mask import Get_Contour_Mask
 
 logger = logging.getLogger('LoggingTest')
 logger.setLevel(20)
@@ -13,11 +13,11 @@ logger.addHandler(sh)
 
 class Camera_Test():
     """
-    best tuning
+    best tuningf
     top : 1.2 0.0
     btm : 1.2 0.0
     """
-    index = None
+    cam_index = None
     run = True
 
     alpha = None
@@ -40,11 +40,6 @@ class Camera_Test():
         self.thresh_low = args.thresh_lower
         self.thresh_up = args.thresh_upper
         self.args = args
-
-        print()
-
-        dc_motor = Dc_motor(50)
-        dc_motor.rotate('start')
 
     @property
     def alpha_val(self):
@@ -87,8 +82,8 @@ class Camera_Test():
         self.is_test = bool
 
     def Main(self, ):
-        self.index = int(self.args.index)
-        cap = cv2.VideoCapture(self.index)
+        self.cam_index = int(self.args.index)
+        cap = cv2.VideoCapture(self.cam_index)
         while self.run:
             ret, frame = cap.read()
             if ret:
@@ -97,21 +92,68 @@ class Camera_Test():
         cv2.destroyAllWindows()
 
     def Image_Process(self, frame):
-        h, w, c = np.shape(frame)
-        # frame = self.Trim_Img(frame)
-
-        [x, y, w, h], frame, gray, thresh = self.Find_Contour(frame, self.index)
+        frame = self.Adjust_Alpha_Beta(frame, self.alpha, self.beta)
+        [x, y, w, h], frame, thresh = self.Find_Contour(frame, self.cam_index)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 3)
 
         if self.is_test:
-            frame = self._Concat_Imgs(frame, gray, thresh)
-            # gray, thresh = self.Show_Gray_Thresh(gray, thresh)
-            # cv2.imshow('gray_thresh', gray_thresh)
+            frame = self.Draw_Center_Pos(frame)
+            frame = self.draw_text(frame, [x, y, w, h])
+            frame = self._Concat_Imgs(frame, thresh)
 
         cv2.imshow('h w c : {} '.format(np.shape(frame)), frame)
-        self.Bright_Control()
+        self.Brightness_Control()
 
-    def Bright_Control(self):
+    def Find_Contour(self, frame, cam_index):
+        GCM = Get_Contour_Mask()
+        canvas = GCM.Create_Canvas(cam_index)
+        not_img, and_img, thresh = GCM.Abstruct_Shape_As_Thresh(frame, canvas)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        corners = GCM.Get_Corners(canvas, contours, cam_index)
+
+        if len(corners) == 1:
+            corner = corners[0]
+        elif len(corners) > 1:
+            corner = corners[1]
+        else:
+            corner = [0, 0, 0, 0]
+        return corner, frame, thresh
+
+    def Draw_Center_Pos(self, frame):
+        h, w, c = np.shape(frame)
+        if self.cam_index == 0:
+            cv2.circle(frame, (int(w // 2), int(h // 2)), int(80), (0, 0, 255), 3)
+        elif self.cam_index == 2:
+            center = (int(w // 2), int(h // 2) - 75)
+            axis = (450, 300)
+            angle = 0
+            cv2.ellipse(frame, (center, axis, angle), (0, 0, 255), 3)
+        return frame
+
+    def Adjust_Alpha_Beta(self, img, alpha, beta):
+        if self.is_test:
+            temple = 'alpha {} beta {} th {} {} '
+            text = temple.format(self.alpha, self.beta, self.thresh_low, self.thresh_up)
+            font = cv2.FONT_HERSHEY_COMPLEX
+            font_size = 0.9
+            color = (0, 255, 0)
+            thick = 2
+            cv2.putText(img, text, (20, 20), font, font_size, color, thick)
+        return np.clip(alpha * img + beta, 0, 255).astype(np.uint8)
+
+    def draw_text(self, img, cornoer):
+        [x, y, w, h] = cornoer
+        temple = 'area {} W {} H {}'
+        text = temple.format(w * h, w, h)
+        font = cv2.FONT_HERSHEY_COMPLEX
+        font_size = 0.9
+        color = (0, 255, 0)
+        thick = 2
+        cv2.putText(img, text, (20, 60), font, font_size, color, thick)
+        return img
+
+
+    def Brightness_Control(self):
         val = 0
         if cv2.waitKey(val) % 256 == ord('d'):
             self.alpha += 0.1
@@ -137,96 +179,6 @@ class Camera_Test():
         self.alpha = math.ceil(self.alpha * 10) / 10
         self.beta = math.ceil(self.beta * 10) / 10
 
-    def Find_Contour(self, frame, cam_index):
-        frame = self.Adjust_Alpha_Beta(frame, self.alpha, self.beta)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(gray, self.thresh_low, self.thresh_up, cv2.THRESH_BINARY)
-        # thresh = cv2.bitwise_not(thresh)
-
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        x, y, w, h = self._Get_Min_Dist_Contour(frame, contours, cam_index)
-
-        return [x, y, w, h], frame, gray, thresh
-
-    def Adjust_Alpha_Beta(self, img, alpha, beta):
-        def draw_text(img):
-            temple = 'alpha {} beta {} th {} {} '
-            text = temple.format(self.alpha, self.beta, self.thresh_low, self.thresh_up)
-            font = cv2.FONT_HERSHEY_COMPLEX
-            font_size = 0.9
-            color = (0, 255, 0)
-            thick = 2
-            cv2.putText(img, text, (20, 20), font, font_size, color, thick)
-            return img
-
-        if self.is_test:
-            img = draw_text(img)
-        return np.clip(alpha * img + beta, 0, 255).astype(np.uint8)
-
-    def _Get_Min_Dist_Contour(self, img, contours, cam):
-        """
-        areas : 'up' = upper size, 'low' = lower size
-        coors :
-        length :
-        """
-
-        def _3_squares(x, y):
-            return ((x ** 2) + (y ** 2)) / (1 / 2)
-
-        areas = {0: {'up': 50 * 50, 'low': 15 * 15},
-                 2: {'up': 250 * 250, 'low': 60 * 60},
-                 4: {'up': 200 * 200, 'low': 60 * 60}, }
-        coors = {0: {'x': 240, 'y': 180, 'X': 430, 'Y': 350},
-                 2: {'x': 50, 'y': 100, 'X': 450, 'Y': 350},
-                 4: {'x': 50, 'y': 0, 'X': 400, 'Y': 350}, }
-        lengths = {0: {'x': coors[0]['X'] - coors[0]['x'], 'y': coors[0]['Y'] - coors[0]['y']},
-                   2: {'x': coors[2]['X'] - coors[2]['x'], 'y': coors[2]['Y'] - coors[2]['y']},
-                   4: {'x': coors[4]['X'] - coors[4]['x'], 'y': coors[4]['Y'] - coors[0]['y']}}
-
-        H, W, c = np.shape(img)
-        OX, OY = W / 2, H / 2  # center coors of image
-        min_dist = _3_squares(OX, OY)
-        min_dist_index = None
-        min_dist_area = OX * OY
-        base_coors = [coors[cam]['x'], coors[cam]['y'], coors[cam]['X'], coors[cam]['Y']]
-
-        logger.log(20, 'OX {} OY {} min_dist {} '.format(OX, OY, min_dist))
-        base_length = _3_squares(lengths[cam]['x'], lengths[cam]['y'])
-        params = {'max': {'dist': base_length, 'index': 0, 'area': areas[cam]['up']},
-                  'min': {'dist': base_length, 'index': 0, 'area': areas[cam]['low']}}
-
-        for i in range(len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[i])
-            x = 1 if x == 0 else x
-            X = x + w
-            Y = y + h
-            center_x = x + (w // 2)
-            center_y = y + (h // 2)
-            ox, oy = x + (w / 2), y + (h / 2)
-            dist = (((ox - OX) ** 2) + ((oy - OY) ** 2)) ** (1 / 2)
-            dist_area = w * h
-            is_dist_in_min_dist = dist < min_dist
-            is_area_in_dist_area = dist_area >= areas[cam]['low'] and dist_area <= areas[cam]['up']
-            is_x_in_coors = x >= coors[cam]['x'] and x <= coors[cam]['X'] \
-                            and X >= coors[cam]['x'] and X <= coors[cam]['X']
-            is_y_in_coors = y >= coors[cam]['y'] and y <= coors[cam]['Y'] \
-                            and Y >= coors[cam]['y'] and Y <= coors[cam]['Y']
-            # is_diff_rate_moderate = abs((centers['x'] - center_x) / W) <= 1.2 \
-            #                         and abs((centers['y'] - center_y) / H) <= 1.2
-            if is_dist_in_min_dist and is_area_in_dist_area and is_x_in_coors and is_y_in_coors:
-                min_dist = dist
-                min_dist_index = i
-                min_dist_area = dist_area
-            params = self.debug_params(params, dist, i, dist_area)
-        # if min_dist_index == None:
-        if min_dist_index == None:
-            contour = [0, 0, 0, 0]
-        else:
-            txt = 'min: dist {} index {} area {} contour {}'
-            contour = cv2.boundingRect(contours[min_dist_index])
-            logger.log(30,
-                       txt.format(min_dist, min_dist_index, min_dist_area, contour))
-        return contour
 
     def debug_params(self, params, dist, index, area):
         params['max']['dist'] = dist if params['max']['dist'] <= dist else params['max']['dist']
@@ -236,6 +188,7 @@ class Camera_Test():
         params['min']['index'] = index if params['min']['index'] >= index else params['min']['index']
         params['min']['area'] = area if params['min']['area'] >= area else params['min']['area']
         return params
+
 
     def _Sort_Cnt(self, img, contours):
         sorted_cnt = []
@@ -247,6 +200,7 @@ class Camera_Test():
                 continue
             sorted_cnt.append(contours[i])
         return sorted_cnt
+
 
     def _Fusion_Cnt(self, contours):
         def Ammend_Coordinates(sorted_cnt):
@@ -272,22 +226,13 @@ class Camera_Test():
 
         return x, y, w, h
 
-    def _Concat_Imgs(self, img, gray, thresh):
-        # gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+    def _Concat_Imgs(self, img, thresh):
         thresh = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-        # img = cv2.hconcat([gray, thresh, img])
         img = cv2.hconcat([thresh, img])
         h_, w_, c = np.shape(img)
         img = cv2.resize(img, (w_ // 2, h_ // 2))
         return img
-
-    # def Show_Gray_Thresh(self, gray, thresh):
-    #     h_, w_ = np.shape(gray)
-    #     gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-    #     gray = cv2.resize(gray, (w_ // 2, h_ // 2))
-    #     thresh = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-    #     thresh = cv2.resize(thresh, (w_ // 2, h_ // 2))
-    #     return gray, thresh
 
 
 if __name__ == '__main__':

@@ -60,15 +60,15 @@ class Detect_Lego_To_Gen_Annotations():
     def Main(self):
         for i, image_path in enumerate(self.image_paths):
             self.index = int(image_path[-8])
-            contour, detected_image_path = self.Get_contour(image_path)
+            corner, detected_image_path = self.Get_contour(image_path)
             new_image_path = os.path.join('./lego/images', os.path.basename(image_path))
             if image_path != '':
                 self.Get_image_shape(image_path)
-                if contour == []:
+                if corner == []:
                     print('Detect NOTHING')
                     # sys.exit()
                 else:
-                    self.Generate_xml(new_image_path, contour)
+                    self.Generate_xml(new_image_path, corner)
                 # shutil.copy(image_path, new_image_path)
             else:
                 print("image_path == '': then sys.exit()")
@@ -85,16 +85,11 @@ class Detect_Lego_To_Gen_Annotations():
         CT.thresh_lower_val = args.lower
         CT.thresh_upper_val = args.upper
 
-        [x, y, w, h], _, _, _ = CT.Find_Contour(img, self.index)
-        # cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 3)
-        # cv2.imshow('contour h w c : {} {} {} '.format(h,w,c), img)
-        # if cv2.waitKey(0) % 256 == ord('q'):
-        #     pass
+        [x, y, w, h], _, _ = CT.Find_Contour(img, self.index)
+        corner = [x, y, x + w, y + h]
+        self._logging_misannotations(image_path, corner)
 
-        contour = [x, y, x + w, y + h]
-        self._logging_misannotations(image_path, contour)
-
-        return contour, detected_image_path
+        return corner, detected_image_path
 
     def _logging_misannotations(self, image_path, contour):
         if contour == [0, 0, 0, 0]:
@@ -108,7 +103,7 @@ class Detect_Lego_To_Gen_Annotations():
         self.h_w_c = [str(h), str(w), str(c)]
         # print(self.h_w_c)
 
-    def Generate_xml(self, new_image_path, contour=None):
+    def Generate_xml(self, new_image_path, corner=None):
         format = './format.xml'
         _xml_name = os.path.basename(new_image_path)
         xml_name = _xml_name[0:-4] + '.xml'
@@ -116,11 +111,11 @@ class Detect_Lego_To_Gen_Annotations():
         new_xml_path = os.path.join('./lego/annotations', xml_name)
         shutil.copy(format, new_xml_path)
 
-        if contour == None:
-            param, contour = self.get_param_from_neighbor_xml(new_xml_path)
+        if corner == None:
+            param, corner = self.get_param_from_neighbor_xml(new_xml_path)
         else:
             param = self.abstract_param_for_xml(os.path.basename(new_image_path))
-        self.write_xml(param, new_xml_path, new_image_path, contour)
+        self.write_xml(param, new_xml_path, new_image_path, corner)
 
     def get_param_from_neighbor_xml(self, new_xml_path):
         def _get_detection_from_existing_xml(self, xml_path):
@@ -173,7 +168,7 @@ class Detect_Lego_To_Gen_Annotations():
         }
         return param
 
-    def write_xml(self, param, new_xml_path, new_image_path, contour):
+    def write_xml(self, param, new_xml_path, new_image_path, corner):
         base_name = os.path.basename(new_image_path)
         tree = ET.parse(new_xml_path)
         tree.find('filename').text = os.path.basename(new_image_path)
@@ -185,16 +180,16 @@ class Detect_Lego_To_Gen_Annotations():
 
         tree.find('object').find('name').text = param['name']
         tree.find('object').find('color').text = param['color']
-        tree.find('object').find('bndbox').find('xmin').text = str(contour[0])
-        tree.find('object').find('bndbox').find('ymin').text = str(contour[1])
-        tree.find('object').find('bndbox').find('xmax').text = str(contour[2])
-        tree.find('object').find('bndbox').find('ymax').text = str(contour[3])
+        tree.find('object').find('bndbox').find('xmin').text = str(corner[0])
+        tree.find('object').find('bndbox').find('ymin').text = str(corner[1])
+        tree.find('object').find('bndbox').find('xmax').text = str(corner[2])
+        tree.find('object').find('bndbox').find('ymax').text = str(corner[3])
 
-        w = contour[2] - contour[0]
-        h = contour[3] - contour[1]
+        w = corner[2] - corner[0]
+        h = corner[3] - corner[1]
         tree.find('object').find('params').find('area').text = str(w * h)
-        tree.find('object').find('params').find('x').text = str(contour[0])
-        tree.find('object').find('params').find('y').text = str(contour[1])
+        tree.find('object').find('params').find('x').text = str(corner[0])
+        tree.find('object').find('params').find('y').text = str(corner[1])
         tree.find('object').find('params').find('w').text = str(w)
         tree.find('object').find('params').find('h').text = str(h)
 

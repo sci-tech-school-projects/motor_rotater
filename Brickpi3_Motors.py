@@ -108,7 +108,7 @@ class Brickpi3_Motors():
             self.BP.set_motor_power(port, speed)
             logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
             time.sleep(0.02)
-            while speed > 20:
+            while speed > 15:
                 speed -= 1
 
     def move_slide(self, port):
