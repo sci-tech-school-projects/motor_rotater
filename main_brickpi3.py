@@ -65,7 +65,7 @@ class Motor_rotater():
 
     def Main(self):
         file_name_counter = 0
-        imgs_from_each_cam = 20
+        imgs_from_each_cam = 600
         imgs_to_create = imgs_from_each_cam * len(self.cam_indexs)
         imgs_total = 0
 
@@ -88,7 +88,7 @@ class Motor_rotater():
                     logger.log(20, "***** i = {}".format(i))
                     BMs[i - 1].__del__()
                     time.sleep(3)
-                    BMs[i].Run_Main_Thread(self.cam_indexs[i])
+                    BMs[i].Main(self.cam_indexs[i])
                     cap.release()
                     cap = cv2.VideoCapture(self.cam_indexs[i])
                     file_name_counter = 0
@@ -97,9 +97,9 @@ class Motor_rotater():
                     break
 
             ret, frame = cap.read()
-            cv2.imshow("cap ", frame)
-            if cv2.waitKey(1) % 256 == ord('q'):
-                break
+            # cv2.imshow("cap ", frame)
+            # if cv2.waitKey(1) % 256 == ord('q'):
+            #     break
 
             if ret and i < len(self.cam_indexs):
                 self.save_img(frame, file_name_counter, self.cam_indexs[i])

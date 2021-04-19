@@ -100,9 +100,8 @@ class Camera_Test():
             frame = self.Draw_Center_Pos(frame)
             frame = self.draw_text(frame, [x, y, w, h])
             frame = self._Concat_Imgs(frame, thresh)
-
-        cv2.imshow('h w c : {} '.format(np.shape(frame)), frame)
-        self.Brightness_Control()
+            cv2.imshow('h w c : {} '.format(np.shape(frame)), frame)
+            self.Brightness_Control()
 
     def Find_Contour(self, frame, cam_index):
         GCM = Get_Contour_Mask()
@@ -152,7 +151,6 @@ class Camera_Test():
         cv2.putText(img, text, (20, 60), font, font_size, color, thick)
         return img
 
-
     def Brightness_Control(self):
         val = 0
         if cv2.waitKey(val) % 256 == ord('d'):
@@ -179,7 +177,6 @@ class Camera_Test():
         self.alpha = math.ceil(self.alpha * 10) / 10
         self.beta = math.ceil(self.beta * 10) / 10
 
-
     def debug_params(self, params, dist, index, area):
         params['max']['dist'] = dist if params['max']['dist'] <= dist else params['max']['dist']
         params['max']['index'] = index if params['max']['index'] <= index else params['max']['index']
@@ -188,7 +185,6 @@ class Camera_Test():
         params['min']['index'] = index if params['min']['index'] >= index else params['min']['index']
         params['min']['area'] = area if params['min']['area'] >= area else params['min']['area']
         return params
-
 
     def _Sort_Cnt(self, img, contours):
         sorted_cnt = []
@@ -200,7 +196,6 @@ class Camera_Test():
                 continue
             sorted_cnt.append(contours[i])
         return sorted_cnt
-
 
     def _Fusion_Cnt(self, contours):
         def Ammend_Coordinates(sorted_cnt):
@@ -225,7 +220,6 @@ class Camera_Test():
         x, y, w, h = Ammend_Coordinates(sorted_cnt)
 
         return x, y, w, h
-
 
     def _Concat_Imgs(self, img, thresh):
         thresh = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
