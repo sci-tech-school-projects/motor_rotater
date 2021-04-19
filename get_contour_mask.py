@@ -16,12 +16,12 @@ class Get_Contour_Mask():
         self.img_path = img_path
         img = cv2.imread(self.img_path)
 
-        canvas = self.Create_Canvas()
+        canvas = self.Create_Canvas(0, img)
         not_img, and_img, thresh = self.Abstruct_Shape_As_Thresh(img, canvas)
 
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
         cont_img = cv2.drawContours(img.copy(), contours, -1, (0, 0, 255), 3)
-        corners = self.Get_Corners(canvas, contours)
+        corners = self.Get_Bounding_Rect(canvas, contours)
         rect_img = self.Draw_Contours_Rect(img, corners)
 
         print("***** contour len {}".format(len(contours)))
@@ -30,12 +30,12 @@ class Get_Contour_Mask():
         cv2.imshow("rect_img", rect_img)
         cv2.waitKey()
 
-    def Create_Canvas(self, cam_index=0):
-        w, h = 640, 480
-        _canvas = np.arange(w * h, dtype=np.uint8)
-        canvas = _canvas.reshape(h, w) * 0
+    def Create_Canvas(self, cam_index=0, frame=None):
+        h, w, c = np.shape(frame)
+        canvas = np.zeros(w * h, dtype=np.uint8).reshape(h, w)
+
         if cam_index == 0:
-            cv2.circle(canvas, (int(640 // 2), int(480 // 2)), int(90), 255, -1)
+            cv2.circle(canvas, (int(w // 2), int(h // 2)), int(90), 255, -1)
         elif cam_index == 2:
             center = (int(w // 2), int(h // 2) - 75)
             axis = (450, 300)
@@ -69,19 +69,19 @@ class Get_Contour_Mask():
 
         return not_img, and_img, thresh
 
-    def Get_Corners(self, canvas, contours, cam_index=0):
+    def Get_Bounding_Rect(self, canvas, contours, cam_index=0):
         rate = {0: {'H': 8 * 20, 'W': 10 * 20},
                 2: {'H': 8, 'W': 10}, }
 
         H, W = np.shape(canvas)
-        corners = []
+        bounding_rects = []
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
             area = int(w * h)
-            logger.log(20, '***** area {} w {} h {}'.format(area, w, h))
+            logger.log(10, '***** area {} w {} h {}'.format(area, w, h))
             if area > ((H // rate[cam_index]['H']) * (W // rate[cam_index]['W'])):
-                corners.append((x, y, w, h))
-        return corners
+                bounding_rects.append((x, y, w, h))
+        return bounding_rects
 
     def Draw_Contours_Rect(self, img, corners):
         rect_img = img.copy()

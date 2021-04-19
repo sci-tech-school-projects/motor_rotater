@@ -19,7 +19,6 @@ class Brickpi3_Motors():
     """
     run = True
     Main_Thread, t_1, t_2 = None, None, None
-    is_catched = False
 
     def __init__(self):
         print('***** Init {}'.format(__class__.__name__))
@@ -61,6 +60,50 @@ class Brickpi3_Motors():
             threads.append(_thread)
         return threads
 
+    def move_rotate(self, port):
+        logger.log(10, "encoder %6d" % (self.BP.get_motor_encoder(port)))
+        speed = 75  # high tork is needed for small motor at initial movement
+        while self.run:
+            self.BP.set_motor_power(port, speed)
+            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
+            time.sleep(0.02)
+            while speed > 15:
+                speed -= 1
+
+    def move_slide(self, port):
+        logger.log(10, "encoder %6d" % (self.BP.get_motor_encoder(port)))
+        speed = -50  # if speed under 20, cant start because the tork is not enough
+        while self.run:
+            self.BP.set_motor_power(port, speed)
+            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
+            time.sleep(0.02)
+            while speed < -10:
+                speed += 1
+
+    def move_lift(self, port):
+        speed = 10
+        top_deg = 360
+        bottom_deg = 5
+        # is_lift = True
+        while self.run:
+            self.BP.set_motor_power(port, speed)
+            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
+            time.sleep(0.2)
+            if self.BP.get_motor_encoder(port) >= (top_deg):
+                speed = -7
+            elif self.BP.get_motor_encoder(port) <= (bottom_deg):
+                speed = 10
+
+    def _Catch_KeyboardInterrupt(self):
+        def signal_handler(signal, frame):
+            print('***** KeyboardInterrupt')
+            self.run = False
+            self.__del__()
+
+        if self.run:
+            signal.signal(signal.SIGINT, signal_handler)
+
+
     def __del__(self):
         print('***** BM __del__ called')
         self.run = False
@@ -100,49 +143,6 @@ class Brickpi3_Motors():
             logger.log(10, 'port {} encoder {} speed {}'.format(port, self.BP.get_motor_encoder(port), speed))
             speed = get_speed()
         print('***** finalized {}'.format(port))
-
-    def move_rotate(self, port):
-        logger.log(10, "encoder %6d" % (self.BP.get_motor_encoder(port)))
-        speed = 75  # high tork is needed for small motor at initial movement
-        while self.run:
-            self.BP.set_motor_power(port, speed)
-            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
-            time.sleep(0.02)
-            while speed > 15:
-                speed -= 1
-
-    def move_slide(self, port):
-        logger.log(10, "encoder %6d" % (self.BP.get_motor_encoder(port)))
-        speed = -50  # if speed under 20, cant start because the tork is not enough
-        while self.run:
-            self.BP.set_motor_power(port, speed)
-            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
-            time.sleep(0.02)
-            while speed < -10:
-                speed += 1
-
-    def move_lift(self, port):
-        speed = 10
-        top_deg = 360
-        bottom_deg = 5
-        while self.run:
-            self.BP.set_motor_power(port, speed)
-            logger.log(10, "encoder %6d  speed %6d " % (self.BP.get_motor_encoder(port), speed))
-            time.sleep(0.2)
-            if self.BP.get_motor_encoder(port) > (top_deg):
-                speed = -7
-            elif self.BP.get_motor_encoder(port) < (bottom_deg):
-                speed = 10
-
-    def _Catch_KeyboardInterrupt(self):
-        def signal_handler(signal, frame):
-            print('***** KeyboardInterrupt')
-            self.run = False
-            self.__del__()
-
-        if not self.is_catched:
-            signal.signal(signal.SIGINT, signal_handler)
-            self.is_catched = True
 
 
 if __name__ == '__main__':

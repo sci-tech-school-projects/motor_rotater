@@ -10,54 +10,48 @@ $ python3 create_torch_category_txt.py
 ### trainval = train + val
 """
 
-mkdir = Mkdir()
-mkdir.main()
-
-# lego
-target_path = os.path.join(os.getcwd(), sys.argv[1])
-_abs_path = os.path.abspath(os.getcwd())
-abs_path = os.path.join(_abs_path, target_path)
-
-glob_pattern = os.path.join(abs_path, 'images/*.jpg')
-image_paths = glob.glob(glob_pattern)
-image_paths.sort()
-print('len image_paths {}'.format(len(image_paths)))
-
-pattern = r'\d{4}__(.*?)__(.*)_\d{4}\.jpg'
-regex = re.compile(pattern)
-
-file_type = ['_train.txt', '_train.txt', '_val.txt', '_test.txt']
-txts = glob.glob(os.path.join(abs_path, 'ImageSets/Main/*'))
-txts.sort()
-print('len txts {}'.format(len(txts)))
-
-base_files = ['train.txt', 'train.txt', 'val.txt', 'test.txt', ]
-base_path_of_Layout = os.path.join(abs_path, 'ImageSets/Layout')
-Layouts = [os.path.join(base_path_of_Layout, file) for file in base_files]
-print('len Layouts {}'.format(len(Layouts)))
-
-base_path_of_Main = os.path.join(abs_path, 'ImageSets/Main')
-Mains = [os.path.join(base_path_of_Main, file) for file in base_files]
-print('len Mains {}'.format(len(Mains)))
-
-label_file = ['labels.txt','obj.names']
-Labels = [os.path.join(abs_path, file) for file in label_file]
-
 
 class Create_Torch_Category_Txt():
+    # lego
+    target_path = os.path.join(os.getcwd(), sys.argv[1])
+    _abs_path = os.path.abspath(os.getcwd())
+    abs_path = os.path.join(_abs_path, target_path)
 
-    def __init__(self, image_paths, file_type, txts, Mains, Layouts, Labels):
-        self.image_paths = image_paths
-        self.file_type = file_type
-        self.txts = txts
-        self.Mains = Mains
-        self.Layouts = Layouts
-        self.labels = Labels
+    glob_pattern = os.path.join(abs_path, 'images/*.jpg')
+    image_paths = glob.glob(glob_pattern)
+    image_paths.sort()
+    print('len image_paths {}'.format(len(image_paths)))
+
+    file_type = ['_train.txt', '_train.txt', '_val.txt', '_test.txt']
+    txts = glob.glob(os.path.join(abs_path, 'ImageSets/Main/*'))
+    txts.sort()
+    print('len txts {}'.format(len(txts)))
+
+    base_files = ['train.txt', 'train.txt', 'val.txt', 'test.txt', ]
+    base_path_of_Layout = os.path.join(abs_path, 'ImageSets/Layout')
+    Layouts = None
+
+    base_path_of_Main = os.path.join(abs_path, 'ImageSets/Main')
+    Mains = None
+
+    label_file = ['labels.txt', 'obj.names']
+    Labels = None
+
+    def __init__(self):
+        mkdir = Mkdir()
+        mkdir.main()
+
+        self.Layouts = [os.path.join(self.base_path_of_Layout, file) for file in self.base_files]
+        print('len Layouts {}'.format(len(self.Layouts)))
+        self.Mains = [os.path.join(self.base_path_of_Main, file) for file in self.base_files]
+        print('len Mains {}'.format(len(self.Mains)))
+        self.Labels = [os.path.join(self.abs_path, file) for file in self.label_file]
+
         self.lists = [
             self.txts,
             self.Mains,
             self.Layouts,
-            self.labels,
+            self.Labels,
         ]
         # print(self.lists)
         self.labels_in_labels_txt = []
@@ -70,6 +64,8 @@ class Create_Torch_Category_Txt():
             return text_to_add
 
         self.Init_File()
+        pattern = r'\d{4}__(.*?)__(.*)_\d{4}(?:_\d){0,1}\.jpg'
+        regex = re.compile(pattern)
         for i, path in enumerate(self.image_paths):
             result = regex.search(path)
             tag = result.group(2)
@@ -85,18 +81,18 @@ class Create_Torch_Category_Txt():
 
     def Write_File(self, i, tag, text_to_add):
         num = i % 4
-        file = os.path.join(base_path_of_Main, tag + self.file_type[num])
+        file = os.path.join(self.base_path_of_Main, tag + self.file_type[num])
 
         self.write_common_file(file, num, text_to_add)
         self.write_common_file(self.Layouts[num], num, text_to_add)
         self.write_common_file(self.Mains[num], num, text_to_add)
 
         if num in [0, 1, 2]:
-            for base_path in [base_path_of_Layout, base_path_of_Main]:
+            for base_path in [self.base_path_of_Layout, self.base_path_of_Main]:
                 file = os.path.join(base_path, 'trainval.txt')
                 self.write_common_file(file, num, text_to_add)
 
-            file = os.path.join(base_path_of_Main, tag + '_trainval.txt')
+            file = os.path.join(self.base_path_of_Main, tag + '_trainval.txt')
             self.write_common_file(file, num, text_to_add)
 
     def write_common_file(self, file, num, text_to_add):
@@ -120,7 +116,7 @@ class Create_Torch_Category_Txt():
             for item in list:
                 print(item)
 
-        for file in self.labels:
+        for file in self.Labels:
             init_file(file)
             for i, txt in enumerate(self.txts):
                 if i % 4 == 0:
@@ -133,11 +129,11 @@ class Create_Torch_Category_Txt():
 
     def Write_Obj_Data(self):
         def get_class_num():
-            labels_txt = os.path.join(abs_path,self.labels[0])
-            with open(labels_txt,'r') as l:
-                return  len(l.readlines())
+            labels_txt = os.path.join(self.abs_path, self.Labels[0])
+            with open(labels_txt, 'r') as l:
+                return len(l.readlines())
 
-        obj_data = os.path.join(abs_path,'obj.data')
+        obj_data = os.path.join(self.abs_path, 'obj.data')
         classes = get_class_num()
         txt = 'classes = {}\n\
         train  = data/train.txt\n\
@@ -152,8 +148,7 @@ class Create_Torch_Category_Txt():
             f.write(txt)
 
 
-
-
-CTCT = Create_Torch_Category_Txt(image_paths, file_type, txts, Mains, Layouts, Labels)
-CTCT.Main()
-CTCT.Write_Obj_Data()
+if __name__ == '__main__':
+    CTCT = Create_Torch_Category_Txt()
+    CTCT.Main()
+    CTCT.Write_Obj_Data()

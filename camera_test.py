@@ -25,6 +25,7 @@ class Camera_Test():
     thresh_up = None
     thresh_low = None
     is_test = False
+    images_path = None
 
     def Init(self):
         ap = ArgumentParser()
@@ -33,12 +34,14 @@ class Camera_Test():
         ap.add_argument('-b', '--beta', default=0.0, type=float)
         ap.add_argument('-l', '--thresh_lower', default=75, type=int)
         ap.add_argument('-u', '--thresh_upper', default=255, type=int)
+        ap.add_argument('-i', '--images_path', default=None, help='for checking existing images')
 
         args = ap.parse_args()
         self.alpha = args.alpha
         self.beta = args.beta
         self.thresh_low = args.thresh_lower
         self.thresh_up = args.thresh_upper
+        self.images_path = args.images_path
         self.args = args
 
     @property
@@ -82,10 +85,25 @@ class Camera_Test():
         self.is_test = bool
 
     def Main(self, ):
+        def select_source():
+            if self.images_path == None:
+                return cv2.VideoCapture(self.cam_index)
+            else:
+                return glob.glob(os.path.join(os.getcwd(), 'lego', self.images_path, '*'))
+
         self.cam_index = int(self.args.index)
-        cap = cv2.VideoCapture(self.cam_index)
+        cap = select_source()
+        i = 0
         while self.run:
-            ret, frame = cap.read()
+            if self.images_path == None:
+                ret, frame = cap.read()
+            else:
+                try:
+                    frame = cv2.imread(cap[i])
+                    ++i
+                    ret = True
+                except IndexError:
+                    ret = False
             if ret:
                 self.Image_Process(frame)
         cap.release()
@@ -93,35 +111,40 @@ class Camera_Test():
 
     def Image_Process(self, frame):
         frame = self.Adjust_Alpha_Beta(frame, self.alpha, self.beta)
-        [x, y, w, h], frame, thresh = self.Find_Contour(frame, self.cam_index)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        bounding_rects, frame, thresh = self.Find_Contour(frame, self.cam_index)
+        for [x, y, w, h] in bounding_rects:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 3)
 
         if self.is_test:
             frame = self.Draw_Center_Pos(frame)
-            frame = self.draw_text(frame, [x, y, w, h])
+            frame = self.draw_text(frame, bounding_rects[0])
             frame = self._Concat_Imgs(frame, thresh)
             cv2.imshow('h w c : {} '.format(np.shape(frame)), frame)
-            self.Brightness_Control()
+            if self.images_path==None:
+                self.Brightness_Control()
+            else:
+                self.Keycontrol()
 
     def Find_Contour(self, frame, cam_index):
         GCM = Get_Contour_Mask()
-        canvas = GCM.Create_Canvas(cam_index)
+        canvas = GCM.Create_Canvas(cam_index, frame)
         not_img, and_img, thresh = GCM.Abstruct_Shape_As_Thresh(frame, canvas)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        corners = GCM.Get_Corners(canvas, contours, cam_index)
+        bounding_rects = GCM.Get_Bounding_Rect(canvas, contours, cam_index)
 
-        if len(corners) == 1:
-            corner = corners[0]
-        elif len(corners) > 1:
-            corner = corners[1]
-        else:
-            corner = [0, 0, 0, 0]
-        return corner, frame, thresh
+        # if len(corners) == 1:
+        #     corner = corners[0]
+        # elif len(corners) > 1:
+        #     corner = corners[1]
+        # else:
+        #     corner = [0, 0, 0, 0]
+        return bounding_rects, frame, thresh
 
     def Draw_Center_Pos(self, frame):
         h, w, c = np.shape(frame)
         if self.cam_index == 0:
-            cv2.circle(frame, (int(w // 2), int(h // 2)), int(80), (0, 0, 255), 3)
+            r = 100
+            cv2.circle(frame, (int(w // 2), int(h // 2)), int(r), (0, 0, 255), 3)
         elif self.cam_index == 2:
             center = (int(w // 2), int(h // 2) - 75)
             axis = (450, 300)
@@ -176,6 +199,13 @@ class Camera_Test():
 
         self.alpha = math.ceil(self.alpha * 10) / 10
         self.beta = math.ceil(self.beta * 10) / 10
+
+    def Keycontrol(self):
+        if cv2.waitKey(0) & 0xFF == ord('q'):
+            self.run = False
+        elif cv2.waitKey(0) & 0xFF == ord('z'):
+            pass
+
 
     def debug_params(self, params, dist, index, area):
         params['max']['dist'] = dist if params['max']['dist'] <= dist else params['max']['dist']

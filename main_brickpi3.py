@@ -5,6 +5,7 @@ import sys, os, glob, time
 from datetime import datetime
 from Brickpi3_Motors import Brickpi3_Motors
 import logging
+import signal
 
 logger = logging.getLogger('LoggingTest')
 logger.setLevel(20)
@@ -13,13 +14,12 @@ logger.addHandler(sh)
 
 
 class Motor_rotater():
-    cam_indexs = [0, 2]
+    cam_indexs = [0]
     base_name = ''
     path = ''
     head_num = 0
     rotate_speed = 50
-
-    # limit_time = 180
+    run = True
 
     def __init__(self):
         print('***** init {}'.format(self.__class__.__name__))
@@ -64,8 +64,9 @@ class Motor_rotater():
             pass
 
     def Main(self):
+        # self._Catch_KeyboardInterrupt()
         file_name_counter = 0
-        imgs_from_each_cam = 600
+        imgs_from_each_cam = 300
         imgs_to_create = imgs_from_each_cam * len(self.cam_indexs)
         imgs_total = 0
 
@@ -76,7 +77,7 @@ class Motor_rotater():
         cap = cv2.VideoCapture(self.cam_indexs[0])
         print('***** cv2.VideoCapture initialized ')
 
-        while imgs_total <= imgs_to_create:
+        while imgs_total <= imgs_to_create and self.run:
             if imgs_total % imgs_from_each_cam == 0:
                 i = imgs_total // imgs_from_each_cam
                 if i % 10 == 0:
@@ -118,6 +119,14 @@ class Motor_rotater():
         path_file = _path_file + '_' + num + '.jpg'
         print(path_file)
         cv2.imwrite(path_file, frame)
+
+    def _Catch_KeyboardInterrupt(self):
+        def signal_handler(signal, frame):
+            print('***** {} KeyboardInterrupt'.format(self.__class__.__name__))
+            self.run = False
+
+        if self.run:
+            signal.signal(signal.SIGINT, signal_handler)
 
 
 if __name__ == '__main__':
