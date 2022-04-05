@@ -30,12 +30,11 @@ class Get_Contour_Mask():
         cv2.imshow("rect_img", rect_img)
         cv2.waitKey()
 
-    def Create_Canvas(self, cam_index=0, frame=None):
+    def Create_Canvas(self, cam_index=0, frame=None, r=100):
         h, w, c = np.shape(frame)
         canvas = np.zeros(w * h, dtype=np.uint8).reshape(h, w)
-
         if cam_index == 0:
-            cv2.circle(canvas, (int(w // 2), int(h // 2)), int(90), 255, -1)
+            cv2.circle(canvas, (int(w // 2), int(h // 2)), int(r), 255, -1)
         elif cam_index == 2:
             center = (int(w // 2), int(h // 2) - 75)
             axis = (450, 300)
@@ -70,7 +69,7 @@ class Get_Contour_Mask():
         return not_img, and_img, thresh
 
     def Get_Bounding_Rect(self, canvas, contours, cam_index=0):
-        rate = {0: {'H': 8 * 20, 'W': 10 * 20},
+        rate = {0: {'H': 8 * 5, 'W': 10 * 5},
                 2: {'H': 8, 'W': 10}, }
 
         H, W = np.shape(canvas)

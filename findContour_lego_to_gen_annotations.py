@@ -172,10 +172,11 @@ class Detect_Lego_To_Gen_Annotations():
 
     def write_xml_with_parse(self, param, new_xml_path, new_image_path, xyXYs):
         def remove_empty_tags():
-            for idx, object in enumerate(objects):
-                if object[idx].find('name') == '':
-                    root.remove(object[idx])
-                    remove_empty_tags()
+            root = tree.getroot()
+            for object in tree.findall('object'):
+                for ob in object.findall('name'):
+                    if ob.text == None:
+                        root.remove(object)
 
         base_name = os.path.basename(new_image_path)
         tree = ET.parse(new_xml_path)

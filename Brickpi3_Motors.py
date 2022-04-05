@@ -82,7 +82,7 @@ class Brickpi3_Motors():
 
     def move_lift(self, port):
         speed = 10
-        top_deg = 360
+        top_deg = 540
         bottom_deg = 5
         # is_lift = True
         while self.run:
@@ -107,9 +107,6 @@ class Brickpi3_Motors():
     def __del__(self):
         print('***** BM __del__ called')
         self.run = False
-        self._Finalize()
-
-    def _Finalize(self):
         self.BP.set_motor_power(self.BP.PORT_B, 0)
         self.finalize_motor_pos(self.BP.PORT_C)
         self.finalize_motor_pos(self.BP.PORT_D)

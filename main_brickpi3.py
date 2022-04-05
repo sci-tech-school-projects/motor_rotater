@@ -66,7 +66,7 @@ class Motor_rotater():
     def Main(self):
         # self._Catch_KeyboardInterrupt()
         file_name_counter = 0
-        imgs_from_each_cam = 300
+        imgs_from_each_cam = 1000
         imgs_to_create = imgs_from_each_cam * len(self.cam_indexs)
         imgs_total = 0
 

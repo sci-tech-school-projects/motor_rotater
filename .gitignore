@@ -1,4 +1,6 @@
-.DS_Store
-imgs/.DS_Store
+*.DS_Store
+*.idea*
+*__pycache__*
 imgs
-.idea/vcs.xml
+old
+BrickPi3

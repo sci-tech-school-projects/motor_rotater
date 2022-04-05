@@ -26,6 +26,7 @@ class Camera_Test():
     thresh_low = None
     is_test = False
     images_path = None
+    r = 140
 
     def Init(self):
         ap = ArgumentParser()
@@ -120,14 +121,14 @@ class Camera_Test():
             frame = self.draw_text(frame, bounding_rects[0])
             frame = self._Concat_Imgs(frame, thresh)
             cv2.imshow('h w c : {} '.format(np.shape(frame)), frame)
-            if self.images_path==None:
+            if self.images_path == None:
                 self.Brightness_Control()
             else:
                 self.Keycontrol()
 
     def Find_Contour(self, frame, cam_index):
         GCM = Get_Contour_Mask()
-        canvas = GCM.Create_Canvas(cam_index, frame)
+        canvas = GCM.Create_Canvas(cam_index, frame, self.r)
         not_img, and_img, thresh = GCM.Abstruct_Shape_As_Thresh(frame, canvas)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
         bounding_rects = GCM.Get_Bounding_Rect(canvas, contours, cam_index)
@@ -143,8 +144,7 @@ class Camera_Test():
     def Draw_Center_Pos(self, frame):
         h, w, c = np.shape(frame)
         if self.cam_index == 0:
-            r = 100
-            cv2.circle(frame, (int(w // 2), int(h // 2)), int(r), (0, 0, 255), 3)
+            cv2.circle(frame, (int(w // 2), int(h // 2)), int(self.r), (0, 0, 255), 3)
         elif self.cam_index == 2:
             center = (int(w // 2), int(h // 2) - 75)
             axis = (450, 300)
@@ -163,8 +163,8 @@ class Camera_Test():
             cv2.putText(img, text, (20, 20), font, font_size, color, thick)
         return np.clip(alpha * img + beta, 0, 255).astype(np.uint8)
 
-    def draw_text(self, img, cornoer):
-        [x, y, w, h] = cornoer
+    def draw_text(self, img, corner):
+        [x, y, w, h] = corner
         temple = 'area {} W {} H {}'
         text = temple.format(w * h, w, h)
         font = cv2.FONT_HERSHEY_COMPLEX
@@ -205,7 +205,6 @@ class Camera_Test():
             self.run = False
         elif cv2.waitKey(0) & 0xFF == ord('z'):
             pass
-
 
     def debug_params(self, params, dist, index, area):
         params['max']['dist'] = dist if params['max']['dist'] <= dist else params['max']['dist']
